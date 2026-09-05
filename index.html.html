@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Para mi Linda Pingüina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --text-dark: #1f2937;
+            --text-handwriting: #111827;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            /* Magical Pastel Gradient Background */
+            background: linear-gradient(
+                125deg, 
+                #ffb6ff 0%,     /* Soft Pink */
+                #e0c3fc 25%,    /* Light Purple */
+                #8ec5fc 50%,    /* Light Blue */
+                #e0c3fc 75%,    /* Light Purple */
+                #ffb6ff 100%    /* Soft Pink */
+            );
+            background-size: 300% 300%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            overflow: hidden;
+            color: var(--text-dark);
+            position: relative;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .handwriting { font-family: 'Caveat', cursive; }
+        .title-font { font-family: 'Pacifico', cursive; }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Permite desplazamiento en pantallas pequeñas */
+            overflow-x: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(40px) scale(0.9);
+            padding: 3rem 1.5rem; /* Asegura espacio de respiro superior e inferior */
+            z-index: 10;
+            scroll-behavior: smooth;
+        }
+
+        /* Truco para centrar verticalmente sin recortar el contenido en pantallas pequeñas */
+        .screen::before, .screen::after {
+            content: '';
+            flex: auto;
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        /* The Premium Glass Card */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 30px;
+            border: 1.5px solid var(--glass-border);
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.05), 
+                inset 0 0 0 2px rgba(255,255,255,0.4),
+                inset 0 0 20px rgba(255,255,255,0.5);
+            padding: 3.5rem 2.5rem;
+            max-width: 550px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            transform-style: preserve-3d;
+            margin: 0 auto; /* Centrado horizontal automático */
+            flex: none; /* Previene que la tarjeta sea comprimida por el flexbox */
+        }
+
+        /* Envelope-like styling for the final letter */
+        .letter-card {
+            background: #fffdf7;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            position: relative;
+            border: none;
+        }
+        
+        .letter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: repeating-linear-gradient(45deg, #ff9a9e, #ff9a9e 15px, #a1c4fd 15px, #a1c4fd 30px);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+
+        .scratch-container {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            height: 220px;
+            margin: 2.5rem auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            touch-action: none;
+            background: white;
+            padding: 5px; /* Add a white border effect */
+        }
+
+        .scratch-content {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: calc(100% - 10px);
+            height: calc(100% - 10px);
+            background: linear-gradient(135deg, #fff9c4 0%, #fff176 100%);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            text-align: center;
+            z-index: 1;
+        }
+
+        #scratch-canvas {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: calc(100% - 10px);
+            height: calc(100% - 10px);
+            border-radius: 15px;
+            z-index: 2;
+            cursor: crosshair;
+        }
+
+        .btn-glow {
+            background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+            color: white;
+            padding: 0.8rem 2.5rem;
+            border-radius: 9999px;
+            font-weight: 800;
+            font-size: 1.15rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 10px 25px rgba(0, 198, 255, 0.4), inset 0 -3px 0 rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 15px 35px rgba(0, 198, 255, 0.5), inset 0 -3px 0 rgba(0,0,0,0.1);
+        }
+
+        .btn-glow:active {
+            transform: translateY(1px);
+            box-shadow: 0 5px 15px rgba(0, 198, 255, 0.3);
+        }
+        
+        .btn-pink {
+            background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%);
+            box-shadow: 0 10px 25px rgba(255, 117, 140, 0.4), inset 0 -3px 0 rgba(0,0,0,0.1);
+        }
+        
+        .btn-pink:hover {
+            box-shadow: 0 15px 35px rgba(255, 117, 140, 0.5), inset 0 -3px 0 rgba(0,0,0,0.1);
+        }
+
+        .cute-penguin {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem auto;
+            animation: float 4s ease-in-out infinite;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(-3deg); }
+            75% { transform: translateY(-5px) rotate(3deg); }
+        }
+
+        @keyframes popReveal {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .show-pop {
+            animation: popReveal 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Background Magical Elements */
+        .bg-element {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Sparkles and Snowflakes */
+        .sparkle {
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px 2px rgba(255,255,255,0.8);
+            animation: twinkle linear infinite;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0); }
+        }
+
+        .bubble {
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
+            animation: driftUp linear infinite;
+        }
+
+        @keyframes driftUp {
+            0% { transform: translateY(100vh) translateX(0) scale(0.5); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(-20vh) translateX(50px) scale(1.2); opacity: 0; }
+        }
+        
+        .hidden-until-scratched {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+        
+        .visible-after-scratch {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Text highlighting styling */
+        .text-glow {
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="magical-bg" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+    <section id="screen-1" class="screen active">
+        <div class="glass-card">
+            <!-- Cute Custom SVG Penguin based on the image -->
+            <svg class="cute-penguin" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Shadow -->
+                <ellipse cx="50" cy="92" rx="25" ry="4" fill="rgba(0,0,0,0.1)"/>
+                <!-- Left Arm (Waving) -->
+                <path d="M75 45 C 85 35, 95 30, 90 20 C 85 15, 75 25, 65 35 Z" fill="#2c3e50" transform="rotate(20 75 45)"/>
+                <!-- Right Arm -->
+                <path d="M25 45 C 15 50, 5 60, 10 70 C 15 75, 25 65, 35 55 Z" fill="#2c3e50"/>
+                <!-- Body Base (Dark) -->
+                <path d="M20 50 C 20 20, 80 20, 80 50 C 85 75, 70 90, 50 90 C 30 90, 15 75, 20 50 Z" fill="#2c3e50"/>
+                <!-- Belly (White) -->
+                <path d="M30 55 C 30 35, 70 35, 70 55 C 72 75, 60 85, 50 85 C 40 85, 28 75, 30 55 Z" fill="#ffffff"/>
+                <!-- Eyes -->
+                <path d="M40 40 Q 42 35 44 40" stroke="#2c3e50" stroke-width="2" stroke-linecap="round"/>
+                <path d="M60 40 Q 58 35 56 40" stroke="#2c3e50" stroke-width="2" stroke-linecap="round"/>
+                <!-- Blushes -->
+                <circle cx="35" cy="45" r="4" fill="#ff9a9e" opacity="0.6"/>
+                <circle cx="65" cy="45" r="4" fill="#ff9a9e" opacity="0.6"/>
+                <!-- Beak -->
+                <path d="M47 43 L 53 43 L 50 48 Z" fill="#f1c40f" stroke="#e67e22" stroke-width="1"/>
+                <!-- Feet -->
+                <path d="M35 88 C 30 95, 40 95, 45 90 Z" fill="#f39c12"/>
+                <path d="M65 88 C 70 95, 60 95, 55 90 Z" fill="#f39c12"/>
+                <!-- Scarf -->
+                <path d="M28 50 Q 50 60 72 50 L 68 56 Q 50 66 32 56 Z" fill="#3498db"/>
+                <path d="M32 56 L 30 70 L 38 68 L 38 58 Z" fill="#3498db"/>
+            </svg>
+
+            <h1 class="handwriting text-3xl md:text-5xl leading-tight text-gray-900 mb-6 font-bold text-glow">
+                "Antes de irme a descansar, me puse manos a la obra a trabajar en algo especial..."
+            </h1>
+            <p class="text-gray-800 text-lg mb-8 font-semibold opacity-90">
+                Un detalle lindo desde mi lado creativo para darte un bonito día y hacerte sonreír.
+            </p>
+            <button class="btn-glow" onclick="nextScreen(2)">
+                Ver más 🐧
+            </button>
+        </div>
+    </section>
+
+    <section id="screen-2" class="screen">
+        <div class="glass-card">
+            <h2 class="title-font text-4xl md:text-5xl text-pink-500 mb-6 drop-shadow-md">Para mi linda pingüina,</h2>
+            <div class="space-y-4 text-gray-800 text-xl leading-relaxed mb-6 font-semibold">
+                <p>
+                    Aquí están los dulces que tanto querías. 🍬
+                </p>
+                <p>
+                    Esta es la última parada del Sr. Pingüino para cerrar bonito tu fin de semana y que disfrutes de cada pedacito de tu país.
+                </p>
+            </div>
+            <div class="handwriting text-4xl text-gray-900 mb-8 mt-6 text-right pr-4 font-bold">
+                Que los disfrutes mucho,<br>
+                <span class="text-blue-500">Tu Sr. Pingüino 🐧</span>
+            </div>
+            <button class="btn-glow btn-pink" onclick="nextScreen(3)">
+                Pero espera... hay algo más 🎁
+            </button>
+        </div>
+    </section>
+
+    <section id="screen-3" class="screen">
+        <div class="glass-card" id="scratch-card-container">
+            <h2 class="title-font text-3xl md:text-4xl text-gray-800 mb-2">Una sorpresita extra...</h2>
+            <p class="text-gray-700 mb-2 font-bold text-lg">Rasca la tarjeta plateada con tu dedito ✨</p>
+            
+            <div class="scratch-container ring-4 ring-pink-200">
+                <!-- Hidden Content -->
+                <div class="scratch-content" id="hidden-message">
+                    <div class="animate-bounce mb-1">
+                        <span class="text-5xl">💎</span>
+                    </div>
+                    <h3 class="font-black text-2xl text-yellow-800 mb-2 uppercase tracking-wider text-shadow">¡Recarga Lista!</h3>
+                    <p class="text-md text-yellow-900 font-bold handwriting text-3xl leading-none mt-2">
+                        Para que saques esas cositas que tanto te gustan. ¡A jugar! 🎮
+                    </p>
+                </div>
+                <!-- Canvas for scratching -->
+                <canvas id="scratch-canvas"></canvas>
+            </div>
+            
+            <div id="next-action-container" class="hidden-until-scratched mt-6 flex flex-col items-center">
+                <p class="text-pink-600 font-black text-xl mb-4 flex items-center gap-2 animate-pulse">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    ¡Sorpresa revelada!
+                </p>
+                <button class="btn-glow" onclick="nextScreen(4)">
+                    Leer cartita final 💌
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="screen-4" class="screen">
+        <div class="glass-card letter-card px-8 py-12 md:px-12">
+            <div class="absolute top-6 right-8 opacity-40 animate-pulse">
+                <svg width="45" height="45" viewBox="0 0 24 24" fill="currentColor" class="text-red-400"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+            
+            <h2 class="handwriting text-5xl md:text-6xl text-pink-500 mb-8 font-bold transform -rotate-2">¡Buenos días, mi niña! ☀️</h2>
+            
+            <div class="handwriting text-3xl md:text-4xl text-gray-800 leading-tight space-y-6 text-left font-semibold">
+                <p>
+                    Espero que al despertar veas esto y te saque una enorme y preciosa sonrisa. 
+                </p>
+                <p>
+                    Deseo de todo corazón que tengas una mañana hermosa, súper juguetona y llena de energía bonita. Que hoy comas muy rico, que ganes absolutamente todas tus partidas y que disfrutes muchísimo tu nueva recarga.
+                </p>
+                <p>
+                    Recuerda que aquí tienes a tu Sr. Pingüino que piensa muchísimo en ti en cada momento. ¡Ve con todo hoy, cómete el mundo que es tuyo! 💕
+                </p>
+            </div>
+            
+            <div class="mt-10 text-right handwriting text-4xl font-bold text-gray-900 border-t-2 border-pink-200 pt-6">
+                Con todo mi amor,<br>
+                <span class="text-blue-500">Tu Pingüino Favorito 🐧💙</span>
+            </div>
+
+            <!-- "Volver a ver" Button -->
+            <div class="mt-12 flex justify-center w-full">
+                <button class="btn-glow btn-pink text-sm px-6 py-2" style="font-family: 'Nunito', sans-serif; font-size: 1rem;" onclick="resetExperience()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Volver a ver la sorpresa
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        function createMagicalBackground() {
+            const container = document.getElementById('magical-bg');
+            container.innerHTML = ''; // Clear existing
+            
+            // 1. Create Bubbles / Orbs
+            for (let i = 0; i < 15; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bg-element', 'bubble');
+                const size = Math.random() * 40 + 10;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${Math.random() * 100}vw`;
+                bubble.style.animationDuration = `${Math.random() * 15 + 10}s`;
+                bubble.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(bubble);
+            }
+
+            // 2. Create Sparkles / Stars
+            for (let i = 0; i < 30; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.classList.add('bg-element', 'sparkle');
+                const size = Math.random() * 3 + 1;
+                sparkle.style.width = `${size}px`;
+                sparkle.style.height = `${size}px`;
+                sparkle.style.left = `${Math.random() * 100}vw`;
+                sparkle.style.top = `${Math.random() * 100}vh`;
+                sparkle.style.animationDuration = `${Math.random() * 3 + 1.5}s`;
+                sparkle.style.animationDelay = `${Math.random() * 2}s`;
+                container.appendChild(sparkle);
+            }
+
+            // 3. Create Snowflakes / Hearts
+            const symbols = ['❄️', '💖', '✨'];
+            for (let i = 0; i < 20; i++) {
+                const icon = document.createElement('div');
+                icon.classList.add('bg-element');
+                icon.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                icon.style.left = `${Math.random() * 100}vw`;
+                icon.style.top = `${Math.random() * 100}vh`;
+                icon.style.fontSize = `${Math.random() * 15 + 8}px`;
+                icon.style.opacity = '0.4';
+                
+                // Drift animation
+                icon.animate([
+                    { transform: 'translateY(0) rotate(0deg)', opacity: 0 },
+                    { opacity: 0.6, offset: 0.2 },
+                    { opacity: 0.6, offset: 0.8 },
+                    { transform: `translateY(100px) rotate(${Math.random()*180}deg)`, opacity: 0 }
+                ], {
+                    duration: Math.random() * 5000 + 5000,
+                    iterations: Infinity,
+                    delay: Math.random() * 5000
+                });
+
+                container.appendChild(icon);
+            }
+        }
+        createMagicalBackground();
+
+        function nextScreen(screenNumber) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            const targetScreen = document.getElementById(`screen-${screenNumber}`);
+            targetScreen.classList.add('active');
+            
+            // SOLUCIÓN: Asegurar que al cambiar de pantalla, estemos posicionados hasta arriba
+            targetScreen.scrollTop = 0;
+
+            if (screenNumber === 2) {
+                // Iniciar el sonido de naturaleza suave de fondo tras el primer click
+                startNatureAudio();
+            }
+
+            if (screenNumber === 3) {
+                // Initialize scratch card only when screen 3 is shown
+                setTimeout(initScratchCard, 500); 
+            }
+            
+            if (screenNumber === 4) {
+                triggerConfetti();
+            }
+        }
+
+        let audioInitialized = false;
+
+        async function startNatureAudio() {
+            if (audioInitialized) return;
+            audioInitialized = true;
+            
+            // Se requiere iniciar explícitamente el AudioContext en los navegadores
+            await Tone.start(); 
+            
+            // 1. Viento Suave / Brisa (Ruido rosa con filtro animado)
+            const noise = new Tone.Noise("pink").start();
+            const autoFilter = new Tone.AutoFilter({
+                frequency: "0.05n", // Oscilación muy lenta
+                baseFrequency: 150,
+                octaves: 2,
+                type: "sine"
+            }).start();
+            
+            const windVolume = new Tone.Volume(-28).toDestination();
+            noise.chain(autoFilter, windVolume);
+
+            // 2. Trinos sutiles de naturaleza y magia (Pájaros lejanos)
+            const birdSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.1, decay: 0.3, sustain: 0, release: 0.5 }
+            });
+            
+            const delay = new Tone.FeedbackDelay("8n", 0.3);
+            const reverb = new Tone.Freeverb({ roomSize: 0.85, dampening: 4000 });
+            const birdVolume = new Tone.Volume(-25).toDestination();
+            
+            birdSynth.chain(delay, reverb, birdVolume);
+
+            // Loop espaciado
+            Tone.Transport.scheduleRepeat((time) => {
+                // Solo suena a veces para ser relajante y no invasivo
+                if (Math.random() > 0.6) {
+                    const notes = ["E5", "G5", "A5", "C6", "D6"];
+                    const note = notes[Math.floor(Math.random() * notes.length)];
+                    birdSynth.triggerAttackRelease(note, "16n", time);
+                    
+                    // Respuesta (doble trino)
+                    if(Math.random() > 0.5) {
+                       birdSynth.triggerAttackRelease(notes[Math.floor(Math.random() * notes.length)], "32n", time + 0.15); 
+                    }
+                }
+            }, "3s");
+
+            Tone.Transport.start();
+        }
+
+        function resetExperience() {
+            // Hide next button on scratch card
+            const nextAction = document.getElementById('next-action-container');
+            nextAction.classList.remove('visible-after-scratch');
+            nextAction.classList.add('hidden-until-scratched');
+            
+            // Hide the hidden message pop
+            const hiddenMsg = document.getElementById('hidden-message');
+            hiddenMsg.classList.remove('show-pop');
+            
+            // Reset scratch card variables so it draws again next time
+            isRevealed = false;
+            
+            // Repintar por completo el área raspable (Plateado)
+            if(canvas && ctx) {
+                canvas.style.display = 'block';
+                canvas.style.opacity = '1';
+                
+                // Pintar color base superpuesto para cubrir la revelación
+                ctx.globalCompositeOperation = 'source-over';
+                
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#e0e0e0');
+                gradient.addColorStop(0.2, '#ffffff');
+                gradient.addColorStop(0.5, '#b0b0b0');
+                gradient.addColorStop(0.8, '#ffffff');
+                gradient.addColorStop(1, '#e0e0e0');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Re-agregar patrón de destellos en la pintura plateada
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                for(let i=0; i<canvas.width; i+=10) {
+                    for(let j=0; j<canvas.height; j+=10) {
+                        if(Math.random() > 0.7) {
+                            ctx.beginPath();
+                            ctx.arc(i, j, Math.random()*1.5, 0, Math.PI*2);
+                            ctx.fill();
+                        }
+                    }
+                }
+                
+                ctx.font = '900 24px Nunito';
+                ctx.fillStyle = '#666';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = "rgba(255,255,255,0.9)";
+                ctx.shadowBlur = 2;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                ctx.fillText('✨ RASCAR AQUÍ ✨', canvas.width / 2, canvas.height / 2);
+                ctx.shadowBlur = 0; 
+
+                // Resetear de nuevo a modo "borrador" para poder rasparlo
+                ctx.globalCompositeOperation = 'destination-out';
+            }
+
+            // Go back to screen 1
+            nextScreen(1);
+            
+            // Regenerate background for freshness
+            createMagicalBackground();
+        }
+
+        let canvas, ctx;
+        let isDrawing = false;
+        let isRevealed = false;
+
+        function initScratchCard() {
+            if (isRevealed) return; // Don't re-init if already scratched in this session
+
+            canvas = document.getElementById('scratch-canvas');
+            if(!canvas) return;
+            
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            const container = canvas.parentElement;
+            // Match canvas size to the visual container (accounting for the padding)
+            canvas.width = container.clientWidth - 10;
+            canvas.height = container.clientHeight - 10;
+
+            // Premium Silver Holographic Gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#e0e0e0');
+            gradient.addColorStop(0.2, '#ffffff');
+            gradient.addColorStop(0.5, '#b0b0b0');
+            gradient.addColorStop(0.8, '#ffffff');
+            gradient.addColorStop(1, '#e0e0e0');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add a subtle noise/sparkle pattern to the silver
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            for(let i=0; i<canvas.width; i+=10) {
+                for(let j=0; j<canvas.height; j+=10) {
+                    if(Math.random() > 0.7) {
+                        ctx.beginPath();
+                        ctx.arc(i, j, Math.random()*1.5, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Guide Text
+            ctx.font = '900 24px Nunito';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Text shadow for engraving effect
+            ctx.shadowColor = "rgba(255,255,255,0.9)";
+            ctx.shadowBlur = 2;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            ctx.fillText('✨ RASCAR AQUÍ ✨', canvas.width / 2, canvas.height / 2);
+            ctx.shadowBlur = 0; // Reset
+
+            // Setup eraser brush
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 55; // Thick brush for easier scratching
+
+            // Event Listeners
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', scratch);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch support
+            canvas.addEventListener('touchstart', startDrawing, {passive: false});
+            canvas.addEventListener('touchmove', scratch, {passive: false});
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            if (isRevealed) return;
+            isDrawing = true;
+            const pos = getMousePos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            if(e.cancelable) e.preventDefault(); 
+        }
+
+        function scratch(e) {
+            if (!isDrawing || isRevealed) return;
+            const pos = getMousePos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            if(e.cancelable) e.preventDefault();
+            
+            // Check less frequently for better mobile performance
+            if (Math.random() > 0.90) { 
+                checkCompletion();
+            }
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            if (!isRevealed) {
+                checkCompletion();
+            }
+        }
+
+        function checkCompletion() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            let clearCount = 0;
+            const stride = 32; // Jump through pixels faster
+            for (let i = 3; i < pixels.length; i += stride * 4) {
+                if (pixels[i] < 50) { // Tolerant alpha check
+                    clearCount++;
+                }
+            }
+
+            const testedPixels = Math.floor(pixels.length / (stride * 4));
+            const percentScratched = (clearCount / testedPixels) * 100;
+
+            if (percentScratched > 40) { // Low threshold makes it satisfying
+                revealAll();
+            }
+        }
+
+        function revealAll() {
+            isRevealed = true;
+            
+            // Fade out remaining silver
+            canvas.style.transition = 'opacity 0.6s ease-out';
+            canvas.style.opacity = '0';
+            
+            setTimeout(() => {
+                canvas.style.display = 'none';
+                
+                // Pop the reward message
+                document.getElementById('hidden-message').classList.add('show-pop');
+                
+                // Show the next button
+                const nextAction = document.getElementById('next-action-container');
+                nextAction.classList.remove('hidden-until-scratched');
+                nextAction.classList.add('visible-after-scratch');
+            }, 600);
+        }
+        
+        function triggerConfetti() {
+            const colors = ['#ff758c', '#a1c4fd', '#fff59d', '#e0c3fc', '#ffffff'];
+            for(let i=0; i<45; i++) {
+                const conf = document.createElement('div');
+                conf.style.position = 'absolute';
+                conf.style.width = Math.random() > 0.5 ? '12px' : '8px';
+                conf.style.height = conf.style.width;
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.left = '50%';
+                conf.style.top = '20%';
+                conf.style.borderRadius = Math.random() > 0.3 ? '50%' : '2px';
+                conf.style.zIndex = '100';
+                conf.style.pointerEvents = 'none';
+                conf.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 15 + Math.random() * 20;
+                const tx = Math.cos(angle) * velocity * 15;
+                const ty = Math.sin(angle) * velocity * 15 + 300; // Fall downwards
+                
+                conf.animate([
+                    { transform: 'translate(0,0) rotate(0deg) scale(0)', opacity: 0 },
+                    { transform: 'translate(0,0) rotate(0deg) scale(1)', opacity: 1, offset: 0.1 },
+                    { transform: `translate(${tx}px, ${ty}px) rotate(${720 + Math.random()*360}deg)`, opacity: 0 }
+                ], {
+                    duration: 2000 + Math.random() * 1500,
+                    easing: 'cubic-bezier(.17,.89,.32,1)',
+                    fill: 'forwards'
+                });
+                
+                document.body.appendChild(conf);
+                setTimeout(() => conf.remove(), 4000); // Cleanup
+            }
+        }
+    </script>
+</body>
+</html>
